@@ -183,7 +183,7 @@ python profiler.py --task Yelp --train_dataset normal_Yelp --test_dataset normal
 ## Cite Our Work
  If you find our work helpful, please consider citing our paper and giving us a star &star;:
  ```bibtex
- @inproceedings{profiler2025,
+ @inproceedings{guo2025profiler,
    title={Profiler: Black-box AI-generated Text Origin Detection via Context-aware Inference Pattern Analysis},
    author={Guo, Hanxi and Cheng, Siyuan and Jin, Xiaolong and Zhang, Zhuo and Shen, Guangyu and Zhang, Kaiyuan and An, Shengwei and Tao, Guanhong and Zhang, Xiangyu},
    booktitle={Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing (EMNLP)},

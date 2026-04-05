@@ -69,14 +69,17 @@ def get_embeddings(model, input_ids):
 
 
 # Loss and Feature Computation
-def compute_symmetric_kl_divergence(data, target_id1, target_id2):
-    """Calculate symmetric KL divergence between two target distributions"""
-    data = torch.tensor(data)
-    data = nn.functional.softmax(data, dim=1)
-    data1 = data[np.arange(len(data)), target_id1].clone().detach()
-    data2 = data[np.arange(len(data)), target_id2].clone().detach()
-    sim_kl_divergence = nn.functional.kl_div(data1, data2, reduction='batchmean') + nn.functional.kl_div(data2, data1, reduction='batchmean')
-    return sim_kl_divergence.detach().cpu().numpy()
+def compute_symmetric_kl_divergence(p, q):
+    """Calculate symmetric KL divergence between two context loss sequences (Eq. 4)"""
+    p = torch.tensor(p, dtype=torch.float32)
+    q = torch.tensor(q, dtype=torch.float32)
+    # L1 normalize to form proper distributions over positions
+    p = p / p.sum()
+    q = q / q.sum()
+    # kl_div expects input=log-probs, target=probs; computes D(target || input)
+    kl_pq = nn.functional.kl_div(q.log(), p, reduction='sum')
+    kl_qp = nn.functional.kl_div(p.log(), q, reduction='sum')
+    return (kl_pq + kl_qp).detach().cpu().numpy()
 
 
 def compute_loss(args, pred_logits, targets, text_slice):
@@ -116,13 +119,11 @@ def compute_loss(args, pred_logits, targets, text_slice):
         # CE_grad statistics (5 instead of 6 - no variance)
         loss_statistics.extend([np.mean(ce_grad[:,i]), np.max(ce_grad[:,i]), np.min(ce_grad[:,i]), np.std(ce_grad[:,i]), np.median(ce_grad[:,i])])
     
-    # Calculate KL divergence
+    # Calculate KL divergence between context loss pairs (Eq. 4)
     kl_divergence = []
-    for id1 in range(target_ids.shape[0]):
-        if id1 == target_ids.shape[0] - 1:
-            break
-        for id2 in range(id1+1, target_ids.shape[0]):
-            kl_divergence.append(compute_symmetric_kl_divergence(probs, target_ids[id1], target_ids[id2]))
+    for j in range(ce.shape[1]):
+        for k in range(j+1, ce.shape[1]):
+            kl_divergence.append(compute_symmetric_kl_divergence(ce[:, j], ce[:, k]))
     kl_divergence = np.array(kl_divergence)
     
     all_features = np.concatenate([loss_statistics, kl_divergence])
